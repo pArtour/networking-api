@@ -1,18 +1,36 @@
 package main
 
 import (
-	"os"
-	"log"
-	"github.com/go-openapi/loads"
-	"github.com/go-openapi/runtime/middleware"
 	"github.com/pArtour/networking-api/config"
+	"github.com/pArtour/networking-api/internal/handlers"
 	"github.com/pArtour/networking-api/internal/storage"
+
+	"log"
+	"net/http"
+	"os"
 )
 
+func NewRouter() *mux.Router {
+	router := mux.NewRouter().StrictSlash(true)
+
+	// Define your routes here
+	//router.HandleFunc("/users/register", registerUserHandler).Methods(http.MethodPost)
+	//router.HandleFunc("/users/login", loginUserHandler).Methods(http.MethodPost)
+	//router.HandleFunc("/users/{id}", getUserHandler).Methods(http.MethodGet)
+	router.HandleFunc("/example", handlers.GetExampleHandler).Methods(http.MethodGet)
+	// Add more routes as needed
+
+	return router
+}
+
 func main() {
-	swaggerSpec, err := loads.Analyzed(restapi.SwaggerJSON, "")
-	if err != nil {
-		log.Fatal(err)
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found")
+	}
+
+	appPort := os.Getenv("APP_PORT")
+	if appPort == "" {
+		log.Fatal("APP_PORT not set in .env file")
 	}
 
 	dbConnectionString := config.GetDBConnectionString()
@@ -21,25 +39,8 @@ func main() {
 	}
 	defer storage.CloseDB()
 
-	api := operations.NewYourAppNameAPI(swaggerSpec)
-	server := restapi.NewServer(api)
+	router := NewRouter()
 
-	defer func() {
-		if err := server.Shutdown(); err != nil {
-			log.Fatal(err)
-		}
-	}()
-
-	// Implement your API handlers here
-	api.GetExampleHandler = handlers.GetExampleHandler()
-
-	// Set the server address and port
-	server.Host = "localhost"
-	server.Port = 8080
-
-	// Start the server
-	log.Printf("Starting server on %s:%d", server.Host, server.Port)
-	if err := server.Serve(); err != nil {
-		log.Fatal(err)
-	}
+	log.Printf("Server listening on port %s", appPort)
+	log.Fatal(http.ListenAndServe(":"+appPort, router))
 }
